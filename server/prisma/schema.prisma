@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String @id @default(uuid())
+  email    String @unique
+  password String // Hashed
+  role     String @default("ADMIN")
+}
+
+model Survey {
+  id        String   @id @default(uuid())
+  title     String
+  status    String   @default("DRAFT") // DRAFT, ACTIVE, COMPLETED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  groups    StakeholderGroup[]
+  kpis      KPI[]
+  responses Response[]
+  report    Report?
+}
+
+model StakeholderGroup {
+  id       String @id @default(uuid())
+  name     String
+  type     String // INTERNAL, EXTERNAL
+  surveyId String
+  survey   Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  
+  responses Response[]
+}
+
+model KPI {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  surveyId    String
+  survey      Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  
+  ratings     ResponseDetail[]
+}
+
+model Response {
+  id                 String           @id @default(uuid())
+  stakeholderGroupId String
+  group              StakeholderGroup @relation(fields: [stakeholderGroupId], references: [id])
+  surveyId           String
+  survey             Survey           @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  createdAt          DateTime         @default(now())
+
+  details ResponseDetail[]
+}
+
+model ResponseDetail {
+  id         String   @id @default(uuid())
+  responseId String
+  response   Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  kpiId      String
+  kpi        KPI      @relation(fields: [kpiId], references: [id])
+  score      Int      // 1-10
+}
+
+model Report {
+  id              String   @id @default(uuid())
+  surveyId        String   @unique
+  survey          Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  summaryText     String
+  matrixData      String   // JSON string of aggregated data
+  stakeholderData String?  // JSON string of group-specific averages
+  createdAt       DateTime @default(now())
+}
